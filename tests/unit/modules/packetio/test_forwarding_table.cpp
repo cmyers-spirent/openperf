@@ -10,7 +10,19 @@ static constexpr int max_ports = 32;
 
 struct test_interface
 {
+    test_interface(std::string_view interface_id)
+        : id(interface_id)
+    {
+        fib_data.store(nullptr);
+    }
+    test_interface(const test_interface& other)
+        : id(other.id)
+    {
+        fib_data.store(other.fib_data.load());
+    }
+
     std::string id;
+    std::atomic<void*> fib_data;
 };
 
 struct test_sink
@@ -20,14 +32,25 @@ struct test_sink
     bool operator==(const test_sink& other) const { return (id == other.id); }
 };
 
-template class openperf::packetio::
-    forwarding_table<test_interface, test_sink, max_ports>;
-
 template <>
 std::string openperf::packetio::get_interface_id(test_interface* ifp)
 {
     return (ifp->id);
 }
+
+/*
+ * Provide a template specialization for the forwarding table so that it
+ * can store fib data into the interface.
+ */
+template <>
+std::atomic<void*>&
+openperf::packetio::get_interface_fib_data(test_interface* ifp)
+{
+    return (ifp->fib_data);
+}
+
+template class openperf::packetio::
+    forwarding_table<test_interface, test_sink, max_ports>;
 
 using forwarding_table =
     openperf::packetio::forwarding_table<test_interface, test_sink, max_ports>;
@@ -38,7 +61,7 @@ TEST_CASE("forwarding table functionality", "[forwarding table]")
 
     SECTION("insert interface, ")
     {
-        auto ifp1 = test_interface{"interface_1"};
+        auto ifp1 = test_interface("interface_1");
         auto mac1 =
             openperf::net::mac_address{0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
         auto port1 = static_cast<uint16_t>(0);
@@ -68,9 +91,43 @@ TEST_CASE("forwarding table functionality", "[forwarding table]")
                 REQUIRE(!ptr);
             }
         }
+
+        SECTION("insert sink, ")
+        {
+            auto sink1 = test_sink{"sink_1"};
+            auto to_delete =
+                table.insert_interface_sink(port1, std::addressof(ifp1), sink1);
+            REQUIRE(to_delete == nullptr);
+
+            SECTION("find sink, ")
+            {
+                auto sink_vec =
+                    table.get_interface_sinks(port1, std::addressof(ifp1));
+                REQUIRE(sink_vec.size() == 1);
+                REQUIRE(sink_vec[0].id == sink1.id);
+
+#if 0 // TODO: port isn't really used...
+                auto sink_vec2 =
+                    table.get_interface_sinks(port1 + 1, std::addressof(ifp1));
+                REQUIRE(sink_vec2.empty());
+#endif
+
+                SECTION("remove sink, ")
+                {
+                    to_delete = table.remove_interface_sink(
+                        port1, std::addressof(ifp1), sink1);
+                    REQUIRE(to_delete);
+                    delete to_delete;
+
+                    auto sink_vec4 =
+                        table.get_interface_sinks(port1, std::addressof(ifp1));
+                    REQUIRE(sink_vec4.empty());
+                }
+            }
+        }
     }
 
-    SECTION("insert sink, ")
+    SECTION("insert port sink, ")
     {
         auto sink1 = test_sink{"sink_1"};
         auto port1 = static_cast<uint16_t>(3);
@@ -88,7 +145,7 @@ TEST_CASE("forwarding table functionality", "[forwarding table]")
             auto sink_vec2 = table.get_sinks(port1 + 1);
             REQUIRE(sink_vec2.empty());
 
-            SECTION("remove interface, ")
+            SECTION("remove sink, ")
             {
                 to_delete = table.remove_sink(port1, sink1);
                 REQUIRE(to_delete);
@@ -125,7 +182,7 @@ TEST_CASE("forwarding table functionality", "[forwarding table]")
                 auto key = std::make_pair(if_idx % many_ports, mac);
                 if_idx++;
                 return (std::make_pair(
-                    key, test_interface{openperf::core::to_string(uuid)}));
+                    key, test_interface(openperf::core::to_string(uuid))));
             });
 
         for (auto& [key, value] : interfaces) {
@@ -161,9 +218,53 @@ TEST_CASE("forwarding table functionality", "[forwarding table]")
                 }
             }
         }
+
+        SECTION("insert many sinks, ")
+        {
+            const int sinks_per_interface = 3;
+            std::map<std::string, std::array<test_sink, sinks_per_interface>>
+                interface_sinks;
+
+            for (auto& [key, value] : interfaces) {
+                auto& sinks = interface_sinks[value.id];
+                for (auto& sink : sinks) {
+                    auto uuid = openperf::core::uuid::random();
+                    sink.id = openperf::core::to_string(uuid);
+                    auto to_delete = table.insert_interface_sink(
+                        key.first, std::addressof(value), sink);
+                    delete to_delete;
+                }
+            }
+
+            SECTION("find sinks, ")
+            {
+                for (auto& [key, value] : interfaces) {
+                    auto& sinks = interface_sinks[value.id];
+                    auto found_sinks = table.get_interface_sinks(
+                        key.first, std::addressof(value));
+                    REQUIRE(sinks.size() == found_sinks.size());
+                    for (size_t i = 0; i < sinks.size(); ++i) {
+                        REQUIRE(sinks[i].id == found_sinks[i].id);
+                    }
+                }
+            }
+
+            SECTION("remove sinks, ")
+            {
+                for (auto& [key, value] : interfaces) {
+                    auto& sinks = interface_sinks[value.id];
+                    for (const auto& sink : sinks) {
+                        auto to_delete = table.remove_interface_sink(
+                            key.first, std::addressof(value), sink);
+                        REQUIRE(to_delete);
+                        delete to_delete;
+                    }
+                }
+            }
+        }
     }
 
-    SECTION("insert many sinks, ")
+    SECTION("insert many port sinks, ")
     {
         static constexpr unsigned many_sinks = 8;
         static constexpr uint16_t port0 = 0;

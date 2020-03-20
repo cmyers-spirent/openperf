@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <variant>
+#include <atomic>
 
 #include "lwip/netif.h"
 
@@ -55,6 +56,8 @@ public:
     using rx_strategy =
         std::variant<netif_rx_strategy::direct, netif_rx_strategy::queueing>;
 
+    std::atomic<void*>& get_fib_data() { return m_fib_data; }
+
 private:
     void configure();
     void unconfigure();
@@ -68,9 +71,10 @@ private:
     rx_strategy m_receive;
 
     netif m_netif;
+    std::atomic<void*> m_fib_data;
 };
 
-const net_interface& to_interface(netif*);
+net_interface& to_interface(netif*);
 
 } // namespace dpdk
 } // namespace packetio

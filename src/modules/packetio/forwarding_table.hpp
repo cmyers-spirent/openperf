@@ -27,7 +27,9 @@ class forwarding_table
     static constexpr unsigned mac_address_length = 6;
 
     std::array<std::atomic<interface_map*>, MaxPorts> m_interfaces;
-    std::array<std::atomic<sink_vector*>, MaxPorts> m_sinks;
+    std::array<std::atomic<sink_vector*>, MaxPorts> m_port_sinks;
+
+    static sink_vector empty_sink_vector;
 
 public:
     forwarding_table();
@@ -41,7 +43,12 @@ public:
 
     sink_vector* insert_sink(uint16_t port_idx, Sink sink);
     sink_vector* remove_sink(uint16_t port_idx, Sink sink);
+    sink_vector*
+    insert_interface_sink(uint16_t port_idx, Interface* ifp, Sink sink);
+    sink_vector*
+    remove_interface_sink(uint16_t port_idx, Interface* ifp, Sink sink);
 
+    Interface* find_interface(uint16_t port_idx, std::string_view id) const;
     Interface* find_interface(std::string_view id) const;
 
     Interface* find_interface(uint16_t port_idx,
@@ -51,6 +58,10 @@ public:
 
     interface_map& get_interfaces(uint16_t port_idx) const;
     sink_vector& get_sinks(uint16_t port_idx) const;
+    sink_vector& get_interface_sinks(uint16_t port_idx, Interface* ifp) const;
+    void visit_interface_sinks(
+        uint16_t port_idx,
+        std::function<bool(Interface* ifp, const Sink& sink)> visitor);
 };
 
 } // namespace openperf::packetio

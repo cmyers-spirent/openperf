@@ -459,8 +459,10 @@ net_interface::~net_interface()
     try {
         down();
         unconfigure();
-    } catch (const std::exception &e) {
-        OP_LOG(OP_LOG_ERROR, "Exception occured in net_interface destructor.   %s", e.what());
+    } catch (const std::exception& e) {
+        OP_LOG(OP_LOG_ERROR,
+               "Exception occured in net_interface destructor.   %s",
+               e.what());
     }
 }
 
@@ -624,7 +626,7 @@ unsigned net_interface::max_gso_length() const { return (m_max_gso_length); }
 
 interface::config_data net_interface::config() const { return (m_config); }
 
-const net_interface& to_interface(netif* ifp)
+net_interface& to_interface(netif* ifp)
 {
     return *(reinterpret_cast<net_interface*>(ifp->state));
 }

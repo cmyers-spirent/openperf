@@ -34,6 +34,23 @@ struct request_sink_del
     sink_data data;
 };
 
+struct interface_sink_data
+{
+    char port_id[name_length_max];
+    char interface_id[name_length_max];
+    packets::generic_sink sink;
+};
+
+struct request_interface_sink_add
+{
+    interface_sink_data data;
+};
+
+struct request_interface_sink_del
+{
+    interface_sink_data data;
+};
+
 struct source_data
 {
     char dst_id[name_length_max];
@@ -100,6 +117,8 @@ struct reply_error
 
 using request_msg = std::variant<request_sink_add,
                                  request_sink_del,
+                                 request_interface_sink_add,
+                                 request_interface_sink_del,
                                  request_source_add,
                                  request_source_del,
                                  request_task_add,
