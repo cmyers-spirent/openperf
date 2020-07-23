@@ -6,12 +6,20 @@
 
 #include "zmq.h"
 
+#ifdef USE_CRASH_HANDLER
+#include "crash_handler.h"
+#endif
+
 static bool _op_done = false;
 void signal_handler(int signo __attribute__((unused))) { _op_done = true; }
 
 int main(int argc, char* argv[])
 {
     op_thread_setname("op_main");
+
+#ifdef USE_CRASH_HANDLER
+    op_crash_handler_init();
+#endif
 
     /* Block child threads from intercepting SIGINT or SIGTERM */
     sigset_t newset, oldset;

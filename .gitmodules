@@ -34,3 +34,9 @@
 [submodule "deps/libpcap"]
 	path = deps/libpcap
 	url = https://github.com/the-tcpdump-group/libpcap.git
+[submodule "deps/breakpad"]
+	path = deps/breakpad
+	url = https://chromium.googlesource.com/breakpad/breakpad
+[submodule "deps/google-linux-syscall-support"]
+	path = deps/google-linux-syscall-support
+	url = https://chromium.googlesource.com/linux-syscall-support/
