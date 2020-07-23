@@ -554,7 +554,7 @@ static void tx_interface_sink_dispatch(const fib* fib,
     });
 
     // Push the bursts to the sinks
-    std::for_each(burst, burst + nbursts, [&](auto& burst) {
+    std::for_each(bursts.data(), bursts.data() + nbursts, [&](auto& burst) {
         auto& sinks = std::get<SINKS>(burst);
         std::for_each(std::begin(*sinks), std::end(*sinks), [&](auto& sink) {
             sink.push(reinterpret_cast<packet::packet_buffer* const*>(outgoing)
