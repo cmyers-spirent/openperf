@@ -17,6 +17,8 @@
 #include "packetio/drivers/dpdk/mbuf_tx.hpp"
 #include "packetio/drivers/dpdk/port_info.hpp"
 #include "packetio/drivers/dpdk/topology_utils.hpp"
+#include "packetio/drivers/dpdk/ethdev/hook.hpp"
+
 #include "packetio/generic_port.hpp"
 
 namespace openperf::packetio::dpdk {
@@ -270,6 +272,8 @@ template <typename ProcessType> driver<ProcessType>::driver()
 
     sanity_check_environment();
 
+    hook_ethdevs();
+
     m_process = std::make_unique<ProcessType>();
 
     /* Generate our map of port ids/indexes */
@@ -314,6 +318,8 @@ template <typename ProcessType> driver<ProcessType>::~driver()
     if (m_ethdev_ports.empty()) { return; }
 
     stop_all_ports();
+
+    unhook_ethdevs();
 }
 
 template <typename ProcessType>

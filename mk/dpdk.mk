@@ -62,8 +62,15 @@ $(DPDK_BLD_DIR)/.config: $(DPDK_DEFCONFIG)
 $(DPDK_TARGET): $(DPDK_BLD_DIR)/.config
 	cd $(DPDK_BLD_DIR) && $(MAKE) EXTRA_CFLAGS="$(strip $(OP_CSTD) $(OP_COPTS) $(OP_EXTRA_CFLAGS))"
 
+# Generate header file containing af_packet driver private structures
+AF_PACKET_PRIV_GEN_SCRIPT := $(OP_ROOT)/src/modules/packetio/drivers/dpdk/ethdev/af_packet_write_priv.py
+$(DPDK_INC_DIR)/rte_pmd_af_packet_priv.h: $(DPDK_SRC_DIR)/drivers/net/af_packet/rte_eth_af_packet.c $(AF_PACKET_PRIV_GEN_SCRIPT)
+	python3 $(AF_PACKET_PRIV_GEN_SCRIPT) $(filter %.c,$+) $@
+
+DPDK_GEN_FILES += $(DPDK_INC_DIR)/rte_pmd_af_packet_priv.h
+
 .PHONY: dpdk
-dpdk: $(DPDK_TARGET)
+dpdk: $(DPDK_TARGET) $(DPDK_GEN_FILES)
 
 .PHONY: clean_dpdk
 clean_dpdk:

@@ -57,3 +57,5 @@ endif
 $(PIO_OBJ_DIR)/drivers/dpdk/%/mbuf_rx_prbs.o: OP_CPPFLAGS += -Wno-deprecated-declarations
 $(PIO_OBJ_DIR)/drivers/dpdk/%/mbuf_signature.o: OP_CPPFLAGS += -Wno-deprecated-declarations
 $(PIO_OBJ_DIR)/drivers/dpdk/%/mbuf_tx.o: OP_CPPFLAGS += -Wno-deprecated-declarations
+
+include $(PIO_DRIVER_DIR)/ethdev/directory.mk
