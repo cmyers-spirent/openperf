@@ -34,4 +34,20 @@ bool dpdk_test_mode()
     return (result.value_or(false));
 }
 
+uint32_t dpdk_stack_mbuf_count()
+{
+    auto result = config::file::op_config_get_param<OP_OPTION_TYPE_LONG>(
+        op_packetio_dpdk_stack_mbuf_count);
+    if (!result || *result < 0) { return 4096; }
+    return static_cast<uint32_t>(*result);
+}
+
+std::optional<uint16_t> dpdk_stack_mbuf_size()
+{
+    auto result = config::file::op_config_get_param<OP_OPTION_TYPE_LONG>(
+        op_packetio_dpdk_stack_mbuf_size);
+    if (!result || *result < 0) { return {}; }
+    return static_cast<uint16_t>(*result);
+}
+
 } // namespace openperf::packetio::dpdk::config

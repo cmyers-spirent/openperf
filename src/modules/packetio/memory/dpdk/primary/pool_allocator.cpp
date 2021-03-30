@@ -70,7 +70,7 @@ __attribute__((const)) static uint32_t pool_size_adjust(uint32_t nb_mbufs)
 
 static void log_mempool(const struct rte_mempool* mpool)
 {
-    OP_LOG(OP_LOG_DEBUG,
+    OP_LOG(OP_LOG_INFO,
            "%s: %u, %u byte mbufs on NUMA socket %d\n",
            mpool->name,
            mpool->size,
@@ -78,7 +78,8 @@ static void log_mempool(const struct rte_mempool* mpool)
            mpool->socket_id);
 }
 
-static rte_mempool* create_mempool(const char* name, size_t size, int socket_id)
+static rte_mempool*
+create_mempool(const char* name, size_t size, int socket_id, uint16_t mbuf_size)
 {
     size_t nb_mbufs = op_min(131072, pool_size_adjust(op_max(1024U, size)));
 
@@ -86,7 +87,7 @@ static rte_mempool* create_mempool(const char* name, size_t size, int socket_id)
                                                      nb_mbufs,
                                                      get_cache_size(nb_mbufs),
                                                      mempool_private_size,
-                                                     RTE_MBUF_DEFAULT_BUF_SIZE,
+                                                     mbuf_size,
                                                      socket_id,
                                                      "stack");
 
@@ -101,45 +102,71 @@ static rte_mempool* create_mempool(const char* name, size_t size, int socket_id)
 }
 
 void pool_allocator::init(const std::vector<uint16_t>& port_indexes,
-                          const std::map<uint16_t, queue::count>& q_counts)
+                          const std::map<uint16_t, queue::count>& q_counts,
+                          const uint16_t mbuf_size,
+                          const uint32_t extra_tx_mbuf_count)
 {
     /* Base default pool size on the number and types of ports on each NUMA node
      */
     for (auto i = 0U; i < RTE_MAX_NUMA_NODES; i++) {
-        auto sum = std::accumulate(
-            begin(port_indexes),
-            end(port_indexes),
-            0,
-            [&](unsigned x, const uint16_t id) {
+        size_t nb_tx = 0, nb_rx = 0;
+        std::for_each(
+            begin(port_indexes), end(port_indexes), [&](const uint16_t id) {
                 const auto& cursor = q_counts.find(id);
                 if (cursor == q_counts.end() || port_info::socket_id(id) != i) {
-                    return (x);
+                    return;
                 }
-                return (x + (cursor->second.rx * port_info::rx_desc_count(id))
-                        + (cursor->second.tx * port_info::tx_desc_count(id)));
+                nb_tx += (cursor->second.tx * port_info::tx_desc_count(id));
+                nb_rx += (cursor->second.rx * port_info::rx_desc_count(id));
             });
-        if (sum) {
-            /* We need a mempool for this NUMA node */
+        if (nb_rx) {
+            /* We need a Rx mempool for this NUMA node */
             std::array<char, RTE_MEMPOOL_NAMESIZE> name_buf;
             snprintf(name_buf.data(),
                      RTE_MEMPOOL_NAMESIZE,
-                     mempool_format.data(),
+                     rx_mempool_format.data(),
                      i);
-            m_pools.emplace(i, create_mempool(name_buf.data(), sum, i));
+            m_rx_pools.emplace(
+                i, create_mempool(name_buf.data(), nb_rx, i, mbuf_size));
+        }
+        if (nb_tx) {
+            /* We need a Tx mempool for this NUMA node */
+            std::array<char, RTE_MEMPOOL_NAMESIZE> name_buf;
+            snprintf(name_buf.data(),
+                     RTE_MEMPOOL_NAMESIZE,
+                     tx_mempool_format.data(),
+                     i);
+            nb_tx += extra_tx_mbuf_count;
+            m_tx_pools.emplace(
+                i, create_mempool(name_buf.data(), nb_tx, i, mbuf_size));
         }
     }
 };
 
-void pool_allocator::fini() { m_pools.clear(); }
+void pool_allocator::fini()
+{
+    m_rx_pools.clear();
+    m_tx_pools.clear();
+}
 
-/* Grab the first memory pool less than or equal to the given socket id. */
-rte_mempool* pool_allocator::get_mempool(unsigned socket_id) const
+/* Grab the first Rx memory pool less than or equal to the given socket id. */
+rte_mempool* pool_allocator::get_rx_mempool(unsigned socket_id) const
 {
     assert(socket_id <= RTE_MAX_NUMA_NODES);
-    assert(!m_pools.empty());
-    auto cursor = m_pools.upper_bound(socket_id);
-    return (cursor == std::begin(m_pools) ? cursor->second.get()
-                                          : std::prev(cursor)->second.get());
+    assert(!m_rx_pools.empty());
+    auto cursor = m_rx_pools.upper_bound(socket_id);
+    return (cursor == std::begin(m_rx_pools) ? cursor->second.get()
+                                             : std::prev(cursor)->second.get());
+}
+
+/* Grab the first Tx memory pool less than or equal to the given socket id. */
+rte_mempool* pool_allocator::get_tx_mempool(unsigned socket_id) const
+{
+    assert(socket_id <= RTE_MAX_NUMA_NODES);
+    assert(!m_tx_pools.empty());
+    auto cursor = m_tx_pools.upper_bound(socket_id);
+    return (cursor == std::begin(m_tx_pools) ? cursor->second.get()
+                                             : std::prev(cursor)->second.get());
 }
 
 } // namespace openperf::packetio::dpdk::primary

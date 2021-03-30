@@ -15,10 +15,13 @@ class pool_allocator : public utils::singleton<pool_allocator>
 {
 public:
     void init(const std::vector<uint16_t>&,
-              const std::map<uint16_t, queue::count>&);
+              const std::map<uint16_t, queue::count>&,
+              const uint16_t mbuf_size,
+              const uint32_t extra_tx_mbuf_count);
     void fini();
 
-    rte_mempool* get_mempool(unsigned socket_id) const;
+    rte_mempool* get_rx_mempool(unsigned socket_id) const;
+    rte_mempool* get_tx_mempool(unsigned socket_id) const;
 
 private:
     struct rte_mempool_releaser
@@ -36,9 +39,11 @@ private:
     };
 
     typedef std::unique_ptr<rte_mempool, rte_mempool_releaser> mempool_ptr;
-    std::map<unsigned, mempool_ptr> m_pools;
+    std::map<unsigned, mempool_ptr> m_rx_pools;
+    std::map<unsigned, mempool_ptr> m_tx_pools;
 
-    static constexpr std::string_view mempool_format = "pool_alloc_%u";
+    static constexpr std::string_view rx_mempool_format = "rx_pool_alloc_%u";
+    static constexpr std::string_view tx_mempool_format = "tx_pool_alloc_%u";
 };
 
 } // namespace openperf::packetio::dpdk::primary

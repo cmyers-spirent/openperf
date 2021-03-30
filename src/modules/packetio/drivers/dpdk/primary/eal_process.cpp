@@ -112,8 +112,8 @@ configure_all_ports(const std::map<uint16_t, queue::count>& port_queue_counts,
                       const auto& port_id = pair.first;
                       const auto& q_count = pair.second;
 
-                      auto mempool =
-                          allocator.get_mempool(port_info::socket_id(port_id));
+                      auto mempool = allocator.get_rx_mempool(
+                          port_info::socket_id(port_id));
                       auto success = utils::configure_port(
                           port_id, mempool, q_count.rx, q_count.tx);
                       if (!success) {
@@ -137,7 +137,19 @@ template <typename ProcessType> eal_process<ProcessType>::eal_process()
     log_idle_workers(q_descriptors);
     auto q_counts = queue::get_port_queue_counts(q_descriptors);
 
-    pool_allocator::instance().init(port_indexes, q_counts);
+    uint16_t mbuf_size = RTE_MBUF_DEFAULT_BUF_SIZE;
+    if (auto size = config::dpdk_stack_mbuf_size()) {
+        if (*size < RTE_MBUF_DEFAULT_BUF_SIZE) {
+            OP_LOG(OP_LOG_ERROR,
+                   "configured mbuf size is too small.  %hu < %d",
+                   *size,
+                   RTE_MBUF_DEFAULT_BUF_SIZE);
+        } else {
+            mbuf_size = *size;
+        }
+    }
+    pool_allocator::instance().init(
+        port_indexes, q_counts, mbuf_size, config::dpdk_stack_mbuf_count());
     configure_all_ports(q_counts, pool_allocator::instance());
 
     if constexpr (detail::has_port_callbacks_v<ProcessType>) {
@@ -160,7 +172,7 @@ eal_process<ProcessType>::get_port(uint16_t port_idx, std::string_view id) const
 {
     return (physical_port(port_idx,
                           id,
-                          pool_allocator::instance().get_mempool(
+                          pool_allocator::instance().get_rx_mempool(
                               port_info::socket_id(port_idx))));
 }
 

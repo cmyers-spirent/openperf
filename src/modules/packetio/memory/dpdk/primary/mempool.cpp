@@ -158,7 +158,7 @@ struct rte_mempool* create_spsc_pktmbuf_mempool(std::string_view id,
 
 static void log_mempool(const struct rte_mempool* mpool)
 {
-    OP_LOG(OP_LOG_DEBUG,
+    OP_LOG(OP_LOG_INFO,
            "%s: %u, %u byte mbufs on NUMA socket %d\n",
            mpool->name,
            mpool->size,
@@ -326,7 +326,7 @@ void release(const rte_mempool* pool)
 
 rte_mempool* get_default(unsigned numa_node)
 {
-    return (primary::pool_allocator::instance().get_mempool(numa_node));
+    return (primary::pool_allocator::instance().get_tx_mempool(numa_node));
 }
 
 } // namespace openperf::packetio::dpdk::mempool
