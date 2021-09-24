@@ -89,6 +89,10 @@
 #define TCP_OVERSIZE TCP_MSS
 #define TCP_LISTEN_BACKLOG 1
 
+#define TCP_TMR_INTERVAL       50  /* The TCP timer interval in milliseconds. */
+#define TCP_FAST_INTERVAL      TCP_TMR_INTERVAL /* the fine grained timeout in milliseconds */
+#define TCP_SLOW_INTERVAL      (2*TCP_TMR_INTERVAL)  /* the coarse grained timeout in milliseconds */
+
 /* Socket options */
 #define SO_REUSE 1
 
