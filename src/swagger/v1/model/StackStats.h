@@ -23,6 +23,7 @@
 
 #include "StackProtocolStats.h"
 #include "StackElementStats.h"
+#include "StackTcpStats.h"
 #include <vector>
 #include "StackMemoryStats.h"
 
@@ -109,8 +110,8 @@ public:
         /// <summary>
     /// 
     /// </summary>
-    std::shared_ptr<StackProtocolStats> getTcp() const;
-    void setTcp(std::shared_ptr<StackProtocolStats> value);
+    std::shared_ptr<StackTcpStats> getTcp() const;
+    void setTcp(std::shared_ptr<StackTcpStats> value);
         /// <summary>
     /// 
     /// </summary>
@@ -159,7 +160,7 @@ protected:
 
     std::shared_ptr<StackProtocolStats> m_Udp;
 
-    std::shared_ptr<StackProtocolStats> m_Tcp;
+    std::shared_ptr<StackTcpStats> m_Tcp;
 
     std::shared_ptr<StackMemoryStats> m_Heap;
 

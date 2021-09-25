@@ -165,6 +165,7 @@ from client.models.stack_element_stats import StackElementStats
 from client.models.stack_memory_stats import StackMemoryStats
 from client.models.stack_protocol_stats import StackProtocolStats
 from client.models.stack_stats import StackStats
+from client.models.stack_tcp_stats import StackTcpStats
 from client.models.t_digest_centroid import TDigestCentroid
 from client.models.t_digest_config import TDigestConfig
 from client.models.t_digest_result import TDigestResult

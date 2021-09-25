@@ -356,6 +356,27 @@ make_protocol_stats_data(const stats_proto* proto)
             .misc_errors = proto->err,
             .cache_hits = proto->cachehit};
 }
+
+#if TCP_STATS
+static stack::tcp_stats_data make_protocol_stats_data(const stats_tcp* tcp)
+{
+    return {.tx_packets = tcp->xmit,
+            .rx_packets = tcp->recv,
+            .forwarded_packets = tcp->fw,
+            .dropped_packets = tcp->drop,
+            .checksum_errors = tcp->chkerr,
+            .length_errors = tcp->lenerr,
+            .memory_errors = tcp->memerr,
+            .routing_errors = tcp->rterr,
+            .protocol_errors = tcp->proterr,
+            .option_errors = tcp->opterr,
+            .misc_errors = tcp->err,
+            .cache_hits = tcp->cachehit,
+            .retransmits = tcp->rexmit,
+            .fast_retransmits = tcp->fast_rexmit};
+}
+#endif
+
 #endif /* LWIP_STATS */
 
 std::unordered_map<std::string, stack::stats_data> lwip::stats() const

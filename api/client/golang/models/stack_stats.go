@@ -82,7 +82,7 @@ type StackStats struct {
 
 	// tcp
 	// Required: true
-	TCP *StackProtocolStats `json:"tcp"`
+	TCP *StackTCPStats `json:"tcp"`
 
 	// udp
 	// Required: true

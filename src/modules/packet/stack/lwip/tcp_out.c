@@ -1578,11 +1578,16 @@ tcp_output_segment(struct tcp_seg *seg, struct tcp_pcb *pcb, struct netif *netif
     pcb->rtime = 0;
   }
 
-  if (pcb->rttest == 0) {
-    pcb->rttest = tcp_ticks;
-    pcb->rtseq = lwip_ntohl(seg->tcphdr->seqno);
+#if LWIP_TCP_TIMESTAMPS
+  if (!tcp_is_flag_set(pcb, TF_TIMESTAMP))
+#endif
+  {
+    if (pcb->rttest == 0) {
+      pcb->rttest = tcp_ticks;
+      pcb->rtseq = lwip_ntohl(seg->tcphdr->seqno);
 
-    LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_output_segment: rtseq %"U32_F"\n", pcb->rtseq));
+      LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_output_segment: rtseq %"U32_F"\n", pcb->rtseq));
+    }
   }
   LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_output_segment: %"U32_F":%"U32_F"\n",
                                  lwip_htonl(seg->tcphdr->seqno), lwip_htonl(seg->tcphdr->seqno) +
@@ -1645,6 +1650,11 @@ tcp_output_segment(struct tcp_seg *seg, struct tcp_pcb *pcb, struct netif *netif
   }
 #endif /* CHECKSUM_GEN_TCP */
   TCP_STATS_INC(tcp.xmit);
+  if (pcb->flags & TF_RTO) {
+    if (TCP_SEQ_LT(lwip_ntohl(seg->tcphdr->seqno), pcb->rto_end)) {
+      TCP_STATS_INC(tcp.rexmit);
+    }
+  }
 
   NETIF_SET_HINTS(netif, &(pcb->netif_hints));
   err = ip_output_if(seg->p, &pcb->local_ip, &pcb->remote_ip, pcb->ttl,
@@ -1855,6 +1865,8 @@ tcp_rexmit_fast(struct tcp_pcb *pcb)
 
       /* Reset the retransmission timer to prevent immediate rto retransmissions */
       pcb->rtime = 0;
+
+      TCP_STATS_INC(tcp.fast_rexmit);
     }
   }
 }

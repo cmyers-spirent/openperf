@@ -799,6 +799,82 @@ definitions:
       - misc_errors
       - cache_hits
 
+  StackTcpStats:
+    type: object
+    description: Stack TCP statistics
+    properties:
+      tx_packets:
+        type: integer
+        description: Transmitted packets
+        format: int64
+      rx_packets:
+        type: integer
+        description: Received packets
+        format: int64
+      forwarded_packets:
+        type: integer
+        description: Forwarded packets
+        format: int64
+      dropped_packets:
+        type: integer
+        description: Dropped packets
+        format: int64
+      checksum_errors:
+        type: integer
+        description: Checksum errors
+        format: int64
+      length_errors:
+        type: integer
+        description: Invalid length errors
+        format: int64
+      memory_errors:
+        type: integer
+        description: Out of memory errors
+        format: int64
+      routing_errors:
+        type: integer
+        description: Routing errors
+        format: int64
+      protocol_errors:
+        type: integer
+        description: Protocol error
+        format: int64
+      option_errors:
+        type: integer
+        description: Errors in options
+        format: int64
+      misc_errors:
+        type: integer
+        description: Miscellaneous errors
+        format: int64
+      cache_hits:
+        type: integer
+        description: Cache hits
+        format: int64
+      retransmits:
+        type: integer
+        description: Retransmitted segments
+        format: int64
+      fast_retransmits:
+        type: integer
+        description: Fast retransmitted segments
+        format: int64
+    required:
+      - tx_packets
+      - rx_packets
+      - forwarded_packets
+      - dropped_packets
+      - checksum_errors
+      - length_errors
+      - memory_errors
+      - routing_errors
+      - protocol_errors
+      - option_errors
+      - misc_errors
+      - cache_hits
+      - retransmits
+      - fast_retransmits
+
   StackStats:
     type: object
     description: Stack statistics
@@ -826,7 +902,7 @@ definitions:
       udp:
         $ref: "#/definitions/StackProtocolStats"
       tcp:
-        $ref: "#/definitions/StackProtocolStats"
+        $ref: "#/definitions/StackTcpStats"
       heap:
         $ref: "#/definitions/StackMemoryStats"
       pools:

@@ -14,7 +14,7 @@ Name | Type | Description | Notes
 **icmpv6** | [**StackProtocolStats**](StackProtocolStats.md) |  | 
 **mld** | [**StackProtocolStats**](StackProtocolStats.md) |  | 
 **udp** | [**StackProtocolStats**](StackProtocolStats.md) |  | 
-**tcp** | [**StackProtocolStats**](StackProtocolStats.md) |  | 
+**tcp** | [**StackTcpStats**](StackTcpStats.md) |  | 
 **heap** | [**StackMemoryStats**](StackMemoryStats.md) |  | 
 **pools** | [**list[StackMemoryStats]**](StackMemoryStats.md) |  | 
 **sems** | [**StackElementStats**](StackElementStats.md) |  | 

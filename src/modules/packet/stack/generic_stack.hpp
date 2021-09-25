@@ -53,7 +53,28 @@ struct protocol_stats_data
     int64_t cache_hits;
 };
 
-typedef std::variant<element_stats_data, memory_stats_data, protocol_stats_data>
+struct tcp_stats_data
+{
+    int64_t tx_packets;
+    int64_t rx_packets;
+    int64_t forwarded_packets;
+    int64_t dropped_packets;
+    int64_t checksum_errors;
+    int64_t length_errors;
+    int64_t memory_errors;
+    int64_t routing_errors;
+    int64_t protocol_errors;
+    int64_t option_errors;
+    int64_t misc_errors;
+    int64_t cache_hits;
+    int64_t retransmits;
+    int64_t fast_retransmits;
+};
+
+typedef std::variant<element_stats_data,
+                     memory_stats_data,
+                     protocol_stats_data,
+                     tcp_stats_data>
     stats_data;
 
 class generic_stack

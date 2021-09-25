@@ -29,6 +29,29 @@ make_swagger_protocol_stats(const protocol_stats_data& src)
     return (dst);
 }
 
+static std::shared_ptr<StackTcpStats>
+make_swagger_tcp_stats(const tcp_stats_data& src)
+{
+    auto dst = std::make_shared<StackTcpStats>();
+
+    dst->setTxPackets(src.tx_packets);
+    dst->setRxPackets(src.rx_packets);
+    dst->setForwardedPackets(src.forwarded_packets);
+    dst->setDroppedPackets(src.dropped_packets);
+    dst->setChecksumErrors(src.checksum_errors);
+    dst->setLengthErrors(src.length_errors);
+    dst->setMemoryErrors(src.memory_errors);
+    dst->setRoutingErrors(src.routing_errors);
+    dst->setProtocolErrors(src.protocol_errors);
+    dst->setOptionErrors(src.option_errors);
+    dst->setMiscErrors(src.misc_errors);
+    dst->setCacheHits(src.cache_hits);
+    dst->setRetransmits(src.retransmits);
+    dst->setFastRetransmits(src.fast_retransmits);
+
+    return (dst);
+}
+
 static std::shared_ptr<StackMemoryStats>
 make_swagger_memory_stats(const memory_stats_data& src)
 {
@@ -69,7 +92,9 @@ make_swagger_stack_stats(const generic_stack& stack)
         std::function<void(std::shared_ptr<StackElementStats>)>;
     using protocol_setter =
         std::function<void(std::shared_ptr<StackProtocolStats>)>;
-    using generic_setter = std::variant<element_setter, protocol_setter>;
+    using tcp_setter = std::function<void(std::shared_ptr<StackTcpStats>)>;
+    using generic_setter =
+        std::variant<element_setter, protocol_setter, tcp_setter>;
     using setters_map = std::unordered_map<std::string, generic_setter>;
     using std::placeholders::_1;
 
@@ -109,6 +134,10 @@ make_swagger_stack_stats(const generic_stack& stack)
                        [&](const protocol_stats_data& protocol) {
                            std::get<protocol_setter>(setters[kv.first])(
                                make_swagger_protocol_stats(protocol));
+                       },
+                       [&](const tcp_stats_data& tcp) {
+                           std::get<tcp_setter>(setters[kv.first])(
+                               make_swagger_tcp_stats(tcp));
                        }),
                    kv.second);
     }

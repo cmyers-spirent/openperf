@@ -84,6 +84,10 @@ static tcpwnd_size_t recv_acked;
 static u16_t tcplen;
 static u8_t flags;
 
+#if LWIP_TCP_TIMESTAMPS
+static u32_t tcp_tsecr;
+#endif
+
 static u8_t recv_flags;
 static struct pbuf *recv_data;
 
@@ -1355,34 +1359,63 @@ tcp_receive(struct tcp_pcb *pcb)
       tcp_send_empty_ack(pcb);
     }
 
-    LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: pcb->rttest %"U32_F" rtseq %"U32_F" ackno %"U32_F"\n",
-                                pcb->rttest, pcb->rtseq, ackno));
+#if LWIP_TCP_TIMESTAMP
+    if (tcp_is_flag_set(pcb, TF_TIMESTAMP)) {
+      LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: tcp_tsecr %"U32_F" ackno %"U32_F"\n",
+                                  tcp_tsecr, ackno));
+      if (tcp_tsecr) {
+        u32_t now = sys_now();
+        if (now > tcp_tsecr) {
+          u32_t rtt = now - tcp_tsecr; /* msec */
+          m = (s16_t)(rtt / TCP_SLOW_INTERVAL);
 
-    /* RTT estimation calculations. This is done by checking if the
-       incoming segment acknowledges the segment we use to take a
-       round-trip time measurement. */
-    if (pcb->rttest && TCP_SEQ_LT(pcb->rtseq, ackno)) {
-      /* diff between this shouldn't exceed 32K since this are tcp timer ticks
-         and a round-trip shouldn't be that long... */
-      m = (s16_t)(tcp_ticks - pcb->rttest);
+          /* This is taken directly from VJs original code in his paper */
+          m = (s16_t)(m - (pcb->sa >> 3));
+          pcb->sa = (s16_t)(pcb->sa + m);
+          if (m < 0) {
+            m = (s16_t) - m;
+          }
+          m = (s16_t)(m - (pcb->sv >> 2));
+          pcb->sv = (s16_t)(pcb->sv + m);
+          pcb->rto = (s16_t)((pcb->sa >> 3) + pcb->sv);
 
-      LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: experienced rtt %"U16_F" ticks (%"U16_F" msec).\n",
-                                  m, (u16_t)(m * TCP_SLOW_INTERVAL)));
-
-      /* This is taken directly from VJs original code in his paper */
-      m = (s16_t)(m - (pcb->sa >> 3));
-      pcb->sa = (s16_t)(pcb->sa + m);
-      if (m < 0) {
-        m = (s16_t) - m;
+          LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: RTO %"U16_F" (%"U16_F" milliseconds)\n",
+                                      pcb->rto, (u16_t)(pcb->rto * TCP_SLOW_INTERVAL)));
+        }
       }
-      m = (s16_t)(m - (pcb->sv >> 2));
-      pcb->sv = (s16_t)(pcb->sv + m);
-      pcb->rto = (s16_t)((pcb->sa >> 3) + pcb->sv);
+    }
+    else
+#endif
+    {
+      LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: pcb->rttest %"U32_F" rtseq %"U32_F" ackno %"U32_F"\n",
+                                  pcb->rttest, pcb->rtseq, ackno));
 
-      LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: RTO %"U16_F" (%"U16_F" milliseconds)\n",
-                                  pcb->rto, (u16_t)(pcb->rto * TCP_SLOW_INTERVAL)));
+      /* RTT estimation calculations. This is done by checking if the
+        incoming segment acknowledges the segment we use to take a
+        round-trip time measurement. */
+      if (pcb->rttest && TCP_SEQ_LT(pcb->rtseq, ackno)) {
+        /* diff between this shouldn't exceed 32K since this are tcp timer ticks
+          and a round-trip shouldn't be that long... */
+        m = (s16_t)(tcp_ticks - pcb->rttest);
 
-      pcb->rttest = 0;
+        LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: experienced rtt %"U16_F" ticks (%"U16_F" msec).\n",
+                                    m, (u16_t)(m * TCP_SLOW_INTERVAL)));
+
+        /* This is taken directly from VJs original code in his paper */
+        m = (s16_t)(m - (pcb->sa >> 3));
+        pcb->sa = (s16_t)(pcb->sa + m);
+        if (m < 0) {
+          m = (s16_t) - m;
+        }
+        m = (s16_t)(m - (pcb->sv >> 2));
+        pcb->sv = (s16_t)(pcb->sv + m);
+        pcb->rto = (s16_t)((pcb->sa >> 3) + pcb->sv);
+
+        LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: RTO %"U16_F" (%"U16_F" milliseconds)\n",
+                                    pcb->rto, (u16_t)(pcb->rto * TCP_SLOW_INTERVAL)));
+
+        pcb->rttest = 0;
+      }
     }
   }
 
@@ -1932,9 +1965,15 @@ tcp_parseopt(struct tcp_pcb *pcb)
   u16_t mss;
 #if LWIP_TCP_TIMESTAMPS
   u32_t tsval;
+  u32_t tsecr;
 #endif
 
   LWIP_ASSERT("tcp_parseopt: invalid pcb", pcb != NULL);
+
+#if LWIP_TCP_TIMESTAMPS
+  /* Clear echo reply timestamp */
+  tcp_tsecr = 0;
+#endif
 
   /* Parse the TCP MSS option, if present. */
   if (tcphdr_optlen != 0) {
@@ -2001,6 +2040,10 @@ tcp_parseopt(struct tcp_pcb *pcb)
           tsval |= (tcp_get_next_optbyte() << 8);
           tsval |= (tcp_get_next_optbyte() << 16);
           tsval |= (tcp_get_next_optbyte() << 24);
+          tsecr = tcp_get_next_optbyte();
+          tsecr |= (tcp_get_next_optbyte() << 8);
+          tsecr |= (tcp_get_next_optbyte() << 16);
+          tsecr |= (tcp_get_next_optbyte() << 24);
           if (flags & TCP_SYN) {
             pcb->ts_recent = lwip_ntohl(tsval);
             /* Enable sending timestamps in every segment now that we know
@@ -2009,8 +2052,9 @@ tcp_parseopt(struct tcp_pcb *pcb)
           } else if (TCP_SEQ_BETWEEN(pcb->ts_lastacksent, seqno, seqno + tcplen)) {
             pcb->ts_recent = lwip_ntohl(tsval);
           }
-          /* Advance to next option (6 bytes already read) */
-          tcp_optidx += LWIP_TCP_OPT_LEN_TS - 6;
+          if (flags & TCP_ACK) {
+            tcp_tsecr = lwip_ntohl(tsecr);
+          }
           break;
 #endif /* LWIP_TCP_TIMESTAMPS */
 #if LWIP_TCP_SACK_OUT

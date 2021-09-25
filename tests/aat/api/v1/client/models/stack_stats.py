@@ -42,7 +42,7 @@ class StackStats(object):
         'icmpv6': 'StackProtocolStats',
         'mld': 'StackProtocolStats',
         'udp': 'StackProtocolStats',
-        'tcp': 'StackProtocolStats',
+        'tcp': 'StackTcpStats',
         'heap': 'StackMemoryStats',
         'pools': 'list[StackMemoryStats]',
         'sems': 'StackElementStats',
@@ -336,7 +336,7 @@ class StackStats(object):
 
 
         :return: The tcp of this StackStats.  # noqa: E501
-        :rtype: StackProtocolStats
+        :rtype: StackTcpStats
         """
         return self._tcp
 
@@ -346,7 +346,7 @@ class StackStats(object):
 
 
         :param tcp: The tcp of this StackStats.  # noqa: E501
-        :type: StackProtocolStats
+        :type: StackTcpStats
         """
         self._tcp = tcp
 

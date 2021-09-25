@@ -188,11 +188,11 @@ void StackStats::setUdp(std::shared_ptr<StackProtocolStats> value)
     m_Udp = value;
     
 }
-std::shared_ptr<StackProtocolStats> StackStats::getTcp() const
+std::shared_ptr<StackTcpStats> StackStats::getTcp() const
 {
     return m_Tcp;
 }
-void StackStats::setTcp(std::shared_ptr<StackProtocolStats> value)
+void StackStats::setTcp(std::shared_ptr<StackTcpStats> value)
 {
     m_Tcp = value;
     
