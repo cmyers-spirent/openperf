@@ -323,7 +323,21 @@ do_sock_setsockopt(ip_pcb* pcb, const api::request_setsockopt& setsockopt)
         if (!opt) return (tl::make_unexpected(opt.error()));
         auto idx = packet::stack::netif_index_by_name(optval.data());
         if (idx == NETIF_NO_INDEX) { return (tl::make_unexpected(ENODEV)); }
-        pcb->netif_idx = idx;
+        if (pcb->netif_idx != idx) {
+            if (pcb->netif_idx != NETIF_NO_INDEX) {
+                if (auto* ifp = netif_get_by_index(pcb->netif_idx);
+                    ifp != nullptr) {
+                    packet::stack::netif_remove_socket(ifp);
+                }
+            }
+            pcb->netif_idx = idx;
+            if (pcb->netif_idx != NETIF_NO_INDEX) {
+                if (auto* ifp = netif_get_by_index(pcb->netif_idx);
+                    ifp != nullptr) {
+                    packet::stack::netif_add_socket(ifp);
+                }
+            }
+        }
         break;
     }
     case SO_RCVBUF:

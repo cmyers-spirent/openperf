@@ -1,6 +1,7 @@
 #include <linux/if_packet.h>
 
 #include "packet/stack/lwip/packet.h"
+#include "packet/stack/lwip/netif_utils.hpp"
 #include "socket/server/lwip_utils.hpp"
 #include "socket/server/packet_socket.hpp"
 #include "utils/overloaded_visitor.hpp"
@@ -67,7 +68,15 @@ packet_socket::packet_socket(openperf::socket::server::allocator& allocator,
 
 packet_socket::~packet_socket()
 {
-    if (m_pcb) { packet_remove(m_pcb); }
+    if (m_pcb) {
+        auto netif_idx = packet_get_ifindex(m_pcb);
+        if (netif_idx != NETIF_NO_INDEX) {
+            if (auto* ifp = netif_get_by_index(netif_idx); ifp != nullptr) {
+                packet::stack::netif_remove_socket(ifp);
+            }
+        }
+        packet_remove(m_pcb);
+    }
 }
 
 packet_socket::packet_socket(packet_socket&& other) noexcept
@@ -131,8 +140,25 @@ static tl::expected<void, int> do_packet_bind(packet_pcb* pcb,
     auto* sll = reinterpret_cast<sockaddr_ll*>(std::addressof(sstorage));
     if (sll->sll_family != AF_PACKET) { return (tl::make_unexpected(EINVAL)); }
 
+    auto orig_netif_idx = packet_get_ifindex(pcb);
+
     auto error = packet_bind(pcb, sll->sll_protocol, sll->sll_ifindex);
     if (error != ERR_OK) { return (tl::make_unexpected(err_to_errno(error))); }
+
+    auto netif_idx = packet_get_ifindex(pcb);
+    if (orig_netif_idx != netif_idx) {
+        if (orig_netif_idx != NETIF_NO_INDEX) {
+            if (auto* ifp = netif_get_by_index(orig_netif_idx);
+                ifp != nullptr) {
+                packet::stack::netif_remove_socket(ifp);
+            }
+        }
+        if (netif_idx != NETIF_NO_INDEX) {
+            if (auto* ifp = netif_get_by_index(netif_idx); ifp != nullptr) {
+                packet::stack::netif_add_socket(ifp);
+            }
+        }
+    }
 
     return {};
 }

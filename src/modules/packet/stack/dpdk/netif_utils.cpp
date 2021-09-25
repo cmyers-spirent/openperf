@@ -5,6 +5,7 @@
 #include "packet/stack/lwip/netif_utils.hpp"
 #include "packet/stack/dpdk/net_interface.hpp"
 #include "packet/stack/dpdk/tcpip_input.hpp"
+#include "packetio/internal_worker.hpp"
 
 namespace openperf::packet::stack {
 
@@ -39,6 +40,20 @@ err_t netif_inject(struct netif* ifp, void* packet)
 {
     return (dpdk::tcpip_input::instance().inject(
         ifp, reinterpret_cast<rte_mbuf*>(packet)));
+}
+
+void netif_add_socket(struct netif* n)
+{
+    auto* ifp = reinterpret_cast<openperf::packet::stack::dpdk::net_interface*>(
+        n->state);
+    packetio::internal::worker::stack_add_socket_ref(ifp->port_index());
+}
+
+void netif_remove_socket(struct netif* n)
+{
+    auto* ifp = reinterpret_cast<openperf::packet::stack::dpdk::net_interface*>(
+        n->state);
+    packetio::internal::worker::stack_remove_socket_ref(ifp->port_index());
 }
 
 } // namespace openperf::packet::stack

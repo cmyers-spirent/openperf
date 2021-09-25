@@ -93,6 +93,10 @@ public:
     find_interface_and_sinks(uint16_t port_idx,
                              const libpacket::type::mac_address& mac) const;
 
+    bool has_sockets(uint16_t port_idx) const;
+    void add_socket(uint16_t port_idx);
+    void remove_socket(uint16_t port_idx);
+
     /**
      * Visit all the interfaces sinks.
      *
@@ -112,6 +116,7 @@ private:
     std::array<std::atomic<sink_vector*>, MaxPorts> m_port_tx_sinks;
     std::array<std::atomic<int>, MaxPorts> m_port_interface_rx_sink_count;
     std::array<std::atomic<int>, MaxPorts> m_port_interface_tx_sink_count;
+    std::array<std::atomic<int>, MaxPorts> m_port_socket_count;
 };
 
 } // namespace openperf::packetio

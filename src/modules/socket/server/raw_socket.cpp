@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/uio.h>
 
+#include "packet/stack/lwip/netif_utils.hpp"
 #include "socket/server/lwip_utils.hpp"
 #include "socket/server/raw_socket.hpp"
 #include "lwip/memp.h"
@@ -36,7 +37,15 @@ const char* to_string(const raw_socket_state& state)
         state));
 }
 
-void raw_socket::raw_pcb_deleter::operator()(raw_pcb* pcb) { raw_remove(pcb); }
+void raw_socket::raw_pcb_deleter::operator()(raw_pcb* pcb)
+{
+    if (pcb->netif_idx != NETIF_NO_INDEX) {
+        if (auto* ifp = netif_get_by_index(pcb->netif_idx); ifp != nullptr) {
+            packet::stack::netif_remove_socket(ifp);
+        }
+    }
+    raw_remove(pcb);
+}
 
 static uint8_t
 raw_receive(void* arg, raw_pcb* pcb, pbuf* p, const ip_addr_t* addr)
