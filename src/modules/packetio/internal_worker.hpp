@@ -1,6 +1,8 @@
 #ifndef _OP_PACKETIO_INTERNAL_WORKER_HPP_
 #define _OP_PACKETIO_INTERNAL_WORKER_HPP_
 
+#include <inttypes.h>
+
 /**
  * @file
  *
@@ -28,6 +30,16 @@ unsigned get_id();
  *   value between [0, numa_node_max)
  */
 unsigned get_numa_node();
+
+/**
+ * Add TCP/IP stack socket reference for port.
+ */
+void stack_add_socket_ref(uint16_t port);
+
+/**
+ * Remove TCP/IP stack socket reference for port.
+ */
+void stack_remove_socket_ref(uint16_t port);
 
 } // namespace openperf::packetio::internal::worker
 

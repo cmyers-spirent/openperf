@@ -17,6 +17,10 @@ std::string interface_id_by_netif(const struct netif*);
 
 err_t netif_inject(struct netif*, void* packet);
 
+void netif_add_socket(struct netif *);
+
+void netif_remove_socket(struct netif *);
+
 }
 
 #endif /* _OP_PACKET_STACK_NETIF_UTILS_HPP_ */

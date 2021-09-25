@@ -19,6 +19,7 @@ forwarding_table<Interface, Sink, MaxPorts>::forwarding_table()
         m_port_tx_sinks[i].store(new sink_vector());
         m_port_interface_rx_sink_count[i].store(0);
         m_port_interface_tx_sink_count[i].store(0);
+        m_port_socket_count[i].store(0);
     }
 }
 
@@ -312,6 +313,31 @@ void forwarding_table<Interface, Sink, MaxPorts>::visit_interface_sinks(
             if (!visitor(entry->ifp, sink)) return;
         }
     }
+}
+
+template <typename Interface, typename Sink, int MaxPorts>
+bool forwarding_table<Interface, Sink, MaxPorts>::has_sockets(
+    uint16_t port_idx) const
+{
+    assert(port_idx < MaxPorts);
+    auto count = m_port_socket_count[port_idx].load(std::memory_order_consume);
+    return (count > 0);
+}
+
+template <typename Interface, typename Sink, int MaxPorts>
+void forwarding_table<Interface, Sink, MaxPorts>::add_socket(uint16_t port_idx)
+{
+    assert(port_idx < MaxPorts);
+    m_port_socket_count[port_idx]++;
+}
+
+template <typename Interface, typename Sink, int MaxPorts>
+void forwarding_table<Interface, Sink, MaxPorts>::remove_socket(
+    uint16_t port_idx)
+{
+    assert(port_idx < MaxPorts);
+    assert(m_port_socket_count[port_idx] > 0);
+    m_port_socket_count[port_idx]--;
 }
 
 } // namespace openperf::packetio

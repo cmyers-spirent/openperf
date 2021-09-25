@@ -2,6 +2,7 @@
 #include <cstring>
 #include <numeric>
 
+#include "packet/stack/lwip/netif_utils.hpp"
 #include "socket/server/compat/linux/tcp.h"
 #include "socket/server/lwip_utils.hpp"
 #include "socket/server/tcp_socket.hpp"
@@ -153,6 +154,12 @@ do_tcp_receive_all(tcp_pcb* pcb, stream_channel& channel, pbuf_queue& queue)
 
 void tcp_socket::tcp_pcb_deleter::operator()(tcp_pcb* pcb)
 {
+    if (pcb->netif_idx != NETIF_NO_INDEX) {
+        if (auto* ifp = netif_get_by_index(pcb->netif_idx); ifp != nullptr) {
+            packet::stack::netif_remove_socket(ifp);
+        }
+    }
+
     /* quick and dirty */
     if (tcp_close(pcb) != ERR_OK) { tcp_abort(pcb); }
 }
@@ -173,6 +180,12 @@ tcp_socket::tcp_socket(openperf::socket::server::allocator* allocator,
     ::tcp_arg(m_pcb.get(), this);
     ::tcp_poll(m_pcb.get(), nullptr, 2U);
     state(tcp_connected());
+
+    if (pcb->netif_idx != NETIF_NO_INDEX) {
+        if (auto* ifp = netif_get_by_index(pcb->netif_idx); ifp != nullptr) {
+            packet::stack::netif_add_socket(ifp);
+        }
+    }
 }
 
 tcp_socket::tcp_socket(openperf::socket::server::allocator& allocator,
