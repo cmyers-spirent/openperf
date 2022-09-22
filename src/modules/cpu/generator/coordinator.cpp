@@ -97,7 +97,8 @@ static std::optional<size_t> get_target_index(std::string_view name)
     return (stats->index());
 }
 
-static std::optional<double> shard_extractor(const result::core_shard& stat,
+template <typename ShardStat>
+static std::optional<double> shard_extractor(const ShardStat& stat,
                                              std::string_view name)
 {
     if (name == "timestamp") {
@@ -285,7 +286,7 @@ coordinator::start(core::event_loop& loop,
 
     m_pid.reset(m_setpoint);
     m_pid.start();
-    m_prev_sum = result::core_shard{};
+    m_prev_sum = result::core_accum{};
 
     m_client.start(m_context, m_results.get(), m_config.core_configs.size());
 

@@ -386,7 +386,7 @@ to_swagger(const generator::result::core_shard& src)
 
 static std::shared_ptr<swagger::v1::model::CpuGeneratorStats>
 to_swagger(const std::vector<generator::result::core_shard>& shards,
-           const generator::result::core_shard& sum)
+           const generator::result::core_accum& sum)
 {
     auto dst = std::make_shared<swagger::v1::model::CpuGeneratorStats>();
 

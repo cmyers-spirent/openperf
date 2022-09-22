@@ -201,12 +201,40 @@ inline void init_stats(core_stats<Clock>& stats,
     stats.steal_.last = steal;
 }
 
+template <typename Clock> struct accum_core_stats : public core_stats<Clock>
+{
+    using duration = typename Clock::duration;
+    duration total_available_;
+    duration total_steal_;
+
+    accum_core_stats& operator+=(const core_stats<Clock>& rhs)
+    {
+        core_stats<Clock>::operator+=(rhs);
+        this->total_available_ += rhs.available();
+        this->total_steal_ += rhs.steal();
+        return (*this);
+    }
+
+    duration available() const { return total_available_; }
+
+    duration steal() const { return total_steal_; }
+};
+
 template <typename Clock>
-inline core_stats<Clock> sum_stats(const std::vector<core_stats<Clock>>& shards)
+inline accum_core_stats<Clock> operator+(accum_core_stats<Clock> lhs,
+                                         const core_stats<Clock>& rhs)
+{
+    lhs += rhs;
+    return (lhs);
+}
+
+template <typename Clock>
+inline accum_core_stats<Clock>
+sum_stats(const std::vector<core_stats<Clock>>& shards)
 {
     auto sum = std::accumulate(std::begin(shards),
                                std::end(shards),
-                               core_stats<Clock>{},
+                               accum_core_stats<Clock>{},
                                std::plus<>{});
     return (sum);
 }

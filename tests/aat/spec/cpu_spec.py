@@ -1,4 +1,6 @@
 import os
+import glob
+import time
 import client.api
 import client.models
 
@@ -26,6 +28,12 @@ CONFIG = Config(os.path.join(os.path.dirname(__file__),
 def approximately_equal(a, b):
     return abs(a - b) < 0.01
 
+def get_core_count():
+    cpu_sysfs_path = '/sys/devices/system/cpu'
+    if not os.path.isdir(cpu_sysfs_path):
+        return 1
+    cpus = glob.glob(os.path.join(cpu_sysfs_path, 'cpu[0-9]*'))
+    return len(cpus)
 
 with description('CPU Generator Module', 'cpu') as self:
     with before.all:
@@ -791,3 +799,47 @@ with description('CPU Generator Module', 'cpu') as self:
             with it('results deleted'):
                 results = self._api.list_cpu_generator_results()
                 expect(results).to(be_empty)
+
+    with description('CPU Generator Results w/ Multiple Cores'):
+        with before.all:
+            self._core_count = max(get_core_count(), 2)
+            if self._core_count == 1:
+                self.skip()
+
+            expect(self._api.list_cpu_generator_results()).to(be_empty)
+            model = cpu_generator_model(self._api.api_client, running = False, method = 'cores', core_count = self._core_count)
+            self._g7r = self._api.create_cpu_generator(model)
+            expect(self._g7r).to(be_valid_cpu_generator)
+            self._runs = 3;
+            for i in range(self._runs):
+                self._api.start_cpu_generator(self._g7r.id)
+                time.sleep(5)
+                self._api.stop_cpu_generator(self._g7r.id)
+
+        with description('/cpu-generator-results'):
+            with context('GET'):
+                with before.all:
+                    self._result = self._api.list_cpu_generator_results_with_http_info(
+                        _return_http_data_only=False)
+
+                with it('success (200)'):
+                    expect(self._result[1]).to(equal(200))
+
+                with it('has Content-Type: application/json header'):
+                    expect(self._result[2]).to(has_json_content_type)
+
+                with it('results list'):
+                    expect(self._result[0]).not_to(be_empty)
+                    expect(len(self._result[0])).to(be(self._runs))
+                    for result in self._result[0]:
+                        expect(result).to(be_valid_cpu_generator_result)
+                        expect(len(result.stats.cores)).to(equal(self._core_count))
+                        expect(result.stats.utilization).to(be_below_or_equal(result.stats.available))
+                        total_available = 0
+                        total_utilization = 0
+                        for core_result in result.stats.cores:
+                            total_available += core_result.available
+                            total_utilization += core_result.utilization
+                            expect(core_result.utilization).to(be_below_or_equal(core_result.available))
+                        expect(result.stats.available).to(equal(total_available))
+                        expect(result.stats.utilization).to(equal(total_utilization))

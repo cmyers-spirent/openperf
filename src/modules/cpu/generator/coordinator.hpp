@@ -26,6 +26,7 @@ public:
 
     using clock = openperf::timesync::chrono::realtime;
     using core_shard = core_stats<clock>;
+    using core_accum = accum_core_stats<clock>;
 
     core_shard& shard(size_t idx);
     const std::vector<core_shard>& shards() const;
@@ -46,7 +47,7 @@ class coordinator
     config m_config;
     double m_setpoint;
     std::optional<uint32_t> m_loop_id;
-    std::optional<result::core_shard> m_prev_sum;
+    std::optional<result::core_accum> m_prev_sum;
     using pid_controller = openperf::generator::pid_controller<result::clock>;
     pid_controller m_pid;
     std::vector<std::thread> m_threads;
