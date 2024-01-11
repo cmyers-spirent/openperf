@@ -74,6 +74,8 @@ unsigned get_most_common_numa_node(const Container& port_ids)
     return (max->first);
 }
 
+void register_bus_numa_hook();
+
 } // namespace openperf::packetio::dpdk::topology
 
 #endif /* _OP_PACKETIO_DPDK_TOPOLOGY_UTILS_HPP_ */

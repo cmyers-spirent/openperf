@@ -8,6 +8,12 @@
 #include "core/op_cpuset.hpp"
 #include "core/op_log.h"
 
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+#include <numa.h>
+#include <rte_bus_pci.h>
+extern struct rte_pci_bus rte_pci_bus;
+#endif
+
 namespace openperf::packetio::dpdk::topology {
 
 using cores_by_id = std::map<unsigned, core::cpuset>;
@@ -221,5 +227,78 @@ std::optional<unsigned> get_stack_lcore_id()
     while (idx < mask.size() && !mask[idx]) { ++idx; }
     return (idx);
 }
+
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+
+static void validate_pci_device_numa_memory()
+{
+    if (!numa_available()) return;
+
+    std::unique_ptr<struct bitmask, void (*)(struct bitmask*)> mems_allowed(
+        numa_get_mems_allowed(), numa_free_nodemask);
+    if (!mems_allowed) return;
+
+    // Set numa_node to -1 if NUMA memory is not supported on the node.
+    struct rte_pci_device* dev;
+    FOREACH_DEVICE_ON_PCIBUS(dev)
+    {
+        if (dev->device.numa_node > 0
+            && !numa_bitmask_isbitset(mems_allowed.get(),
+                                      dev->device.numa_node)) {
+            OP_LOG(OP_LOG_WARNING,
+                   "PCI device %s NUMA %d does not support memory allocation.",
+                   dev->device.name,
+                   dev->device.numa_node);
+            dev->device.numa_node = -1;
+        }
+    }
+}
+
+static int bus_numa_hook_scan(void)
+{
+    validate_pci_device_numa_memory();
+    return 0;
+}
+
+static int bus_numa_hook_probe(void) { return 0; }
+
+static struct rte_device* bus_numa_hook_find_device(
+    const struct rte_device* start, rte_dev_cmp_t cmp, const void* data)
+{
+    return NULL;
+}
+
+struct rte_bus_numa_hook
+{
+    struct rte_bus bus;
+};
+
+struct rte_bus_numa_hook rte_bus_numa_hook = {
+    .bus =
+        {
+            .name = "numa_hook",
+            .scan = bus_numa_hook_scan,
+            .probe = bus_numa_hook_probe,
+            .find_device = bus_numa_hook_find_device,
+        },
+};
+
+/**
+ * register function to adjust device NUMA association if NUMA memory is not
+ * supported.
+ *
+ * Normally the DPDK library will not allow using devices if they are on a NUMA
+ * node which does not have memory associated with it.
+ *
+ * This is supported by registering a dummy bus which is probed/scanned after
+ * the real busses.
+ */
+void register_bus_numa_hook() { rte_bus_register(&rte_bus_numa_hook.bus); }
+
+#else
+
+void register_bus_probe_numa_hook() {}
+
+#endif // RTE_EAL_NUMA_AWARE_HUGEPAGES
 
 } // namespace openperf::packetio::dpdk::topology

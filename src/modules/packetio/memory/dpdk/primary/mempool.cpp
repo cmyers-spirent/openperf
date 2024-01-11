@@ -46,6 +46,25 @@ struct rte_mempool* create_spsc_pktmbuf_mempool(std::string_view id,
                                  static_cast<int>(socket_id),
                                  MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET);
 
+    if (!mp && static_cast<int>(socket_id) != SOCKET_ID_ANY) {
+        OP_LOG(OP_LOG_WARNING,
+               "Unable to create mbuf pool %s on NUMA node %d.  Trying ANY "
+               "node ID.",
+               id.data(),
+               socket_id);
+        mp = rte_mempool_create(id.data(),
+                                n,
+                                elt_size,
+                                cache_size,
+                                sizeof(rte_pktmbuf_pool_private),
+                                rte_pktmbuf_pool_init,
+                                nullptr,
+                                rte_pktmbuf_init,
+                                nullptr,
+                                SOCKET_ID_ANY,
+                                MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET);
+    }
+
     return (mp);
 }
 

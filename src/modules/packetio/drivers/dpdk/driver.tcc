@@ -235,6 +235,8 @@ static void do_bootstrap()
     auto cpuset = core::cpuset_get_affinity();
     auto cpuset_saved = cpuset;
 
+    topology::register_bus_numa_hook();
+
     bootstrap();
 
     /* Remove all DPDK slave cores from our original affinity mask */

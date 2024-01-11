@@ -92,6 +92,20 @@ static rte_mempool* create_mempool(const char* name,
                                                      mbuf_size,
                                                      socket_id,
                                                      "stack");
+    if (!mp && socket_id != SOCKET_ID_ANY) {
+        OP_LOG(OP_LOG_WARNING,
+               "Unable to create mbuf pool %s on NUMA node %d.  Trying ANY "
+               "node ID.",
+               name,
+               socket_id);
+        mp = rte_pktmbuf_pool_create_by_ops(name,
+                                            nb_mbufs,
+                                            get_cache_size(nb_mbufs),
+                                            mempool_private_size,
+                                            mbuf_size,
+                                            SOCKET_ID_ANY,
+                                            "stack");
+    }
 
     if (!mp) {
         throw std::runtime_error(std::string("Could not allocate mempool = ")
