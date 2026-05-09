@@ -18,6 +18,7 @@ extern const char op_packetio_dpdk_ports_required[];
 extern const char op_packetio_dpdk_rx_worker_mask[];
 extern const char op_packetio_dpdk_tx_worker_mask[];
 extern const char op_packetio_dpdk_drop_tx_overruns[];
+extern const char op_packetio_dpdk_no_promiscuous[];
 
 namespace openperf::packetio::dpdk::config {
 
@@ -64,6 +65,7 @@ inline void add_dpdk_argument(std::vector<std::string>& args,
 bool dpdk_disable_lro();
 bool dpdk_disable_rx_irq();
 bool dpdk_drop_tx_overruns();
+bool dpdk_no_promiscuous();
 
 } /* namespace openperf::packetio::dpdk::config */
 

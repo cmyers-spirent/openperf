@@ -2,6 +2,7 @@
 #include <cassert>
 
 #include "packet/type/mac_address.hpp"
+#include "packetio/drivers/dpdk/arg_parser.hpp"
 #include "packetio/drivers/dpdk/port/filter.hpp"
 #include "packetio/drivers/dpdk/port_info.hpp"
 
@@ -26,29 +27,75 @@ static unsigned get_max_mac_addresses(uint16_t port_id)
 
 static void maybe_enable_promiscuous_mode(uint16_t port_id)
 {
+    if (config::dpdk_no_promiscuous()) {
+        OP_LOG(
+            OP_LOG_INFO,
+            "Not enabling promiscuous mode on port %u due to configuration\n",
+            port_id);
+        return;
+    }
+
     if (!rte_eth_promiscuous_get(port_id)) {
         OP_LOG(OP_LOG_INFO, "Enabling promiscuous mode on port %u\n", port_id);
-        rte_eth_promiscuous_enable(port_id);
+        auto error = rte_eth_promiscuous_enable(port_id);
+        if (error != 0) {
+            OP_LOG(OP_LOG_WARNING,
+                   "Failed to enable promiscuous mode on port %u: %s\n",
+                   port_id,
+                   rte_strerror(-error));
+        }
     }
 }
 
 static void maybe_disable_promiscuous_mode(uint16_t port_id)
 {
+    if (config::dpdk_no_promiscuous()) {
+        OP_LOG(
+            OP_LOG_INFO,
+            "Not disabling promiscuous mode on port %u due to configuration\n",
+            port_id);
+        return;
+    }
+
     if (rte_eth_promiscuous_get(port_id)) {
         OP_LOG(OP_LOG_INFO, "Disabling promiscuous mode on port %u\n", port_id);
-        rte_eth_promiscuous_disable(port_id);
+        auto error = rte_eth_promiscuous_disable(port_id);
+        if (error != 0) {
+            OP_LOG(OP_LOG_WARNING,
+                   "Failed to disable promiscuous mode on port %u: %s\n",
+                   port_id,
+                   rte_strerror(-error));
+        }
+    }
+}
+
+static void maybe_enable_allmulticast_mode(uint16_t port_id)
+{
+    if (config::dpdk_no_promiscuous()) {
+        OP_LOG(
+            OP_LOG_INFO,
+            "Not enabling all-multicast mode on port %u due to configuration\n",
+            port_id);
+        return;
+    }
+
+    if (!rte_eth_allmulticast_get(port_id)) {
+        OP_LOG(
+            OP_LOG_INFO, "Enabling all-multicast mode on port %u\n", port_id);
+        auto error = rte_eth_allmulticast_enable(port_id);
+        if (error != 0) {
+            OP_LOG(OP_LOG_WARNING,
+                   "Failed to enable all-multicast mode on port %u: %s\n",
+                   port_id,
+                   rte_strerror(-error));
+        }
     }
 }
 
 mac_filter::mac_filter(uint16_t port_id)
     : m_port(port_id)
 {
-    auto error = rte_eth_allmulticast_enable(port_id);
-    if (error == -ENOTSUP) {
-        OP_LOG(OP_LOG_WARNING,
-               "No support for multicast reception on port %u\n",
-               port_id);
-    }
+    maybe_enable_allmulticast_mode(port_id);
 }
 
 mac_filter::~mac_filter()

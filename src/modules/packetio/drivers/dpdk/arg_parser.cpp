@@ -227,4 +227,14 @@ bool dpdk_drop_tx_overruns()
     return (do_tx_drop);
 }
 
+bool dpdk_no_promiscuous()
+{
+    static const auto no_promiscuous =
+        config::file::op_config_get_param<OP_OPTION_TYPE_NONE>(
+            op_packetio_dpdk_no_promiscuous)
+            .value_or(false);
+
+    return (no_promiscuous);
+}
+
 } /* namespace openperf::packetio::dpdk::config */

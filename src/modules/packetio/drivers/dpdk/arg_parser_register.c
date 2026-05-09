@@ -15,6 +15,8 @@ const char op_packetio_dpdk_tx_worker_mask[] =
     "modules.packetio.dpdk.tx-worker-mask";
 const char op_packetio_dpdk_drop_tx_overruns[] =
     "modules.packetio.dpdk.drop-tx-overruns";
+const char op_packetio_dpdk_no_promiscuous[] =
+    "modules.packetio.dpdk.no-promiscuous";
 
 MAKE_OPTION_DATA(
     dpdk,
@@ -54,6 +56,10 @@ MAKE_OPTION_DATA(
              OP_OPTION_TYPE_CPUSET_STRING),
     MAKE_OPT("drop packets if the transmit queue is overrun",
              op_packetio_dpdk_drop_tx_overruns,
+             0,
+             OP_OPTION_TYPE_NONE),
+    MAKE_OPT("Do not enable promiscuous mode on DPDK ports",
+             op_packetio_dpdk_no_promiscuous,
              0,
              OP_OPTION_TYPE_NONE), );
 
